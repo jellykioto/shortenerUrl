@@ -1,0 +1,30 @@
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+
+	"github.com/go-chi/chi"
+	"github.com/jellykioto/yandex-go-learning/internal/controllers"
+	"github.com/sirupsen/logrus"
+)
+
+// 44 минута
+func main() {
+	log := logrus.New()
+	log.SetOutput(os.Stdout)
+	log.SetLevel(logrus.InfoLevel)
+
+	controller := controllers.NewBaseController(log)
+
+	r := chi.NewRouter()
+	r.Mount("/", controller.Route())
+
+	log.Info("Server started")
+	err := http.ListenAndServe(":8080", r)
+
+	if err != nil {
+		fmt.Printf("сервер: #{err}")
+	}
+}
