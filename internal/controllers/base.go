@@ -1,26 +1,49 @@
-package main
+package controllers
 
 import (
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
+
+	"github.com/go-chi/chi"
 )
 
-var urls map[string]string
+type Logger interface {
+	Info(args ...interface{})
+}
 
-func main() {
-	urls = make(map[string]string)
+type BaseController struct {
+	logger Logger
+	Urls   map[string]string
+}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", shortenURL)
-	err := http.ListenAndServe(`:8080`, mux)
-	if err != nil {
-		panic(err)
+func NewBaseController(logger Logger) *BaseController {
+	return &BaseController{
+		logger: logger,
 	}
 }
 
-func shortenURL(w http.ResponseWriter, r *http.Request) {
+func (c *BaseController) Route() *chi.Mux {
+	r := chi.NewRouter()
+	r.Get("/", c.handleShortenURL)
+	r.Post("/", c.handleShortenURL)
+	// r.Get("/{name}", c.handleName)
+	return r
+}
+
+// func (c *BaseController) handleMain(writer http.ResponseWriter, request *http.Request) {
+// 	c.logger.Info("main")
+// 	writer.Write([]byte("Hello"))
+// }
+
+// func (c *BaseController) handleName(writer http.ResponseWriter, request *http.Request) {
+// 	c.logger.Info("name")
+// 	writer.Write([]byte("hello "))
+// }
+
+func (c *BaseController) handleShortenURL(w http.ResponseWriter, r *http.Request) {
+	c.logger.Info("shortUrl")
 	if r.Method == http.MethodPost {
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -33,7 +56,7 @@ func shortenURL(w http.ResponseWriter, r *http.Request) {
 		}
 		url := string(body)
 		id := generateID()
-		urls[id] = url
+		c.Urls[id] = url
 		response := fmt.Sprintf("http://localhost:8080/%s", id)
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -44,7 +67,7 @@ func shortenURL(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == http.MethodGet {
 		id := r.URL.Path[1:]
 		fmt.Println(r.URL.Path[1:])
-		url, ok := urls[id]
+		url, ok := c.Urls[id]
 		if !ok {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
